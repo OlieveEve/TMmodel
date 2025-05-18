@@ -1,47 +1,70 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>TM in Thunkable</title>
+    <meta charset="utf-8" />
+    <title>Teachable Machine x Thunkable</title>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+    <style>
+      body {
+        font-family: sans-serif;
+        text-align: center;
+        padding: 20px;
+      }
+      #preview {
+        display: none;
+        max-width: 100%;
+        border: 2px solid #ccc;
+        margin-top: 10px;
+      }
+    </style>
   </head>
   <body>
-    <h2 id="status">รอรับภาพจาก Thunkable...</h2>
-    <img id="preview" width="200" />
+    <h2>Teachable Machine x Thunkable</h2>
+    <p id="status">รอรับภาพจาก Thunkable...</p>
+    <img id="preview" />
     
     <script>
-      const URL = "https://teachablemachine.withgoogle.com/models/U7Zrx7V59/";
+      const URL = "https://teachablemachine.withgoogle.com/models/U7Zrx7V59/"; // เปลี่ยนเป็นลิงก์ของคุณเอง
+
       let model;
 
-      async function init() {
+      async function initModel() {
         const modelURL = URL + "model.json";
         const metadataURL = URL + "metadata.json";
-
         model = await tmImage.load(modelURL, metadataURL);
-        document.getElementById("status").innerText = "โหลดโมเดลเสร็จแล้ว พร้อมรับภาพ...";
+        document.getElementById("status").innerText = "โมเดลโหลดแล้ว! รอรับภาพ...";
+        console.log("Model loaded");
       }
 
-      init();
-
-      // รอฟังข้อความจาก Thunkable
-      document.addEventListener("message", async function(event) {
+      function handleMessage(event) {
         const base64Image = event.data;
+        console.log("ได้รับภาพ base64 แล้ว");
 
-        // แสดงภาพที่รับเข้ามา
+        document.getElementById("status").innerText = "ประมวลผลภาพ...";
         const img = document.getElementById("preview");
         img.src = base64Image;
+        img.style.display = "block";
 
-        // รอให้โหลดภาพเสร็จ
         img.onload = async () => {
           const prediction = await model.predict(img);
           const topResult = prediction.sort((a, b) => b.probability - a.probability)[0];
-
-          // แสดงผลลัพธ์
-          document.getElementById("status").innerText = `ผลลัพธ์: ${topResult.className}`;
-
-          // ส่งกลับไปยัง Thunkable
-          window.ReactNativeWebView.postMessage(topResult.className);
+          const result = topResult.className;
+          document.getElementById("status").innerText = 'ผลลัพธ์: ${result}';
+          console.log("ส่งกลับไปยัง Thunkable:", result);
+          
+          if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+            window.ReactNativeWebView.postMessage(result);
+          } else {
+            window.parent.postMessage(result, "*");
+          }
         };
-      });
+      }
+
+      // รองรับทั้ง Web Viewer แบบ Web และ Mobile App
+      document.addEventListener("message", handleMessage); // สำหรับ Android/iOS
+      window.addEventListener("message", handleMessage);   // สำหรับ Web / Emulator
+
+      initModel();
     </script>
   </body>
 </html>
