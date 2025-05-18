@@ -5,37 +5,43 @@
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
   </head>
   <body>
-    <h2>กำลังประมวลผลกล้อง...</h2>
-    <video id="webcam" autoplay></video>
+    <h2 id="status">รอรับภาพจาก Thunkable...</h2>
+    <img id="preview" width="200" />
+    
     <script>
       const URL = "https://teachablemachine.withgoogle.com/models/U7Zrx7V59/";
-      let model, webcam;
+      let model;
 
       async function init() {
         const modelURL = URL + "model.json";
         const metadataURL = URL + "metadata.json";
 
         model = await tmImage.load(modelURL, metadataURL);
-        webcam = new tmImage.Webcam(200, 200, true);
-        await webcam.setup();
-        await webcam.play();
-        document.getElementById("webcam").appendChild(webcam.canvas);
-
-        loop();
-      }
-
-      async function loop() {
-        webcam.update();
-        const prediction = await model.predict(webcam.canvas);
-        const topResult = prediction.sort((a, b) => b.probability - a.probability)[0];
-
-        if (topResult.probability > 0.85) {
-          window.parent.postMessage(topResult.className, "*");
-        }
-        requestAnimationFrame(loop);
+        document.getElementById("status").innerText = "โหลดโมเดลเสร็จแล้ว พร้อมรับภาพ...";
       }
 
       init();
+
+      // รอฟังข้อความจาก Thunkable
+      document.addEventListener("message", async function(event) {
+        const base64Image = event.data;
+
+        // แสดงภาพที่รับเข้ามา
+        const img = document.getElementById("preview");
+        img.src = base64Image;
+
+        // รอให้โหลดภาพเสร็จ
+        img.onload = async () => {
+          const prediction = await model.predict(img);
+          const topResult = prediction.sort((a, b) => b.probability - a.probability)[0];
+
+          // แสดงผลลัพธ์
+          document.getElementById("status").innerText = `ผลลัพธ์: ${topResult.className}`;
+
+          // ส่งกลับไปยัง Thunkable
+          window.ReactNativeWebView.postMessage(topResult.className);
+        };
+      });
     </script>
   </body>
 </html>
