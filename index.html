@@ -1,42 +1,58 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <title>Base64 Converter</title>
-</head>
-<body>
-  <h3>แปลง blob เป็น base64 จาก Thunkable</h3>
-  <p id="status">รอรับภาพจาก Thunkable...</p>
-  <img id="preview" style="max-width: 100%; height: auto;" />
+  <head>
+    <title>TM in Thunkable</title>
+    <meta charset="UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+  </head>
+  <body>
+    <h2 id="status">รอรับภาพจาก Thunkable...</h2>
+    <img id="preview" width="200" />
+    <script>
+      const URL = "https://teachablemachine.withgoogle.com/models/U7Zrx7V59/";
+      let model;
 
-  <script>
-    window.addEventListener("message", async function(event) {
-      const blobUrl = event.data;
-
-      document.getElementById("status").innerText = "กำลังโหลดภาพจาก blob...";
-
-      try {
-        const response = await fetch(blobUrl);
-        const blob = await response.blob();
-
-        const reader = new FileReader();
-        reader.onloadend = function () {
-          const base64Data = reader.result;
-
-          // แสดงภาพ preview
-          document.getElementById("preview").src = base64Data;
-          document.getElementById("status").innerText = "ส่งข้อมูลกลับ Thunkable แล้ว";
-
-          // ส่งกลับไปยัง Thunkable
-          window.ReactNativeWebView?.postMessage(base64Data);
-        };
-
-        reader.readAsDataURL(blob); // แปลงเป็น base64
-      } catch (e) {
-        document.getElementById("status").innerText = "เกิดข้อผิดพลาดในการโหลด blob";
-        console.error(e);
+      async function loadModel() {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+        model = await tmImage.load(modelURL, metadataURL);
+        document.getElementById("status").innerText = "พร้อมรับภาพจาก Thunkable แล้ว...";
       }
-    });
-  </script>
-</body>
+
+      loadModel();
+
+      function handleMessage(event) {
+        const data = event.data;
+
+        if (!data.startsWith("data:image")) {
+          document.getElementById("status").innerText = "ข้อมูลที่รับไม่ใช่รูปภาพ";
+          return;
+        }
+
+        const img = document.getElementById("preview");
+        img.src = data;
+        document.getElementById("status").innerText = "ประมวลผล...";
+
+        img.onload = async () => {
+          try {
+            const prediction = await model.predict(img);
+            const top = prediction.sort((a, b) => b.probability - a.probability)[0];
+
+            document.getElementById("status").innerText = `ผลลัพธ์: ${top.className}`;
+
+            if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+              window.ReactNativeWebView.postMessage(top.className);
+            } else {
+              window.parent.postMessage(top.className, "*");
+            }
+          } catch (err) {
+            document.getElementById("status").innerText = "เกิดข้อผิดพลาดในการประมวลผล";
+          }
+        };
+      }
+
+      document.addEventListener("message", handleMessage);
+      window.addEventListener("message", handleMessage);
+    </script>
+  </body>
 </html>
