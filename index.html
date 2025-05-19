@@ -6,7 +6,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
   </head>
   <body>
-    <h2 id="status">รอรับภาพจาก Thunkable...</h2>
+    <h3 id="status">รอรับภาพจาก Thunkable...</h3>
     <img id="preview" width="200" />
     <script>
       const URL = "https://teachablemachine.withgoogle.com/models/U7Zrx7V59/";
@@ -19,7 +19,7 @@
     model = await tmImage.load(modelURL, metadataURL);
     document.getElementById("status").innerText = "พร้อมรับภาพจาก Thunkable แล้ว...";
   } catch (err) {
-    document.getElementById("status").innerText = "❌ โหลดโมเดลไม่สำเร็จ";
+    document.getElementById("status").innerText = "โหลดโมเดลไม่สำเร็จ";
     console.error(err);
   }
       }
