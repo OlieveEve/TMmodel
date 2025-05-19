@@ -1,22 +1,41 @@
 <!DOCTYPE html>
 <html>
+<head>
+  <meta charset="UTF-8">
+  <title>Base64 Converter</title>
+</head>
 <body>
-  <input type="file" id="fileInput" accept="image/*"><br>
-  <img id="preview" width="200">
+  <h3>แปลง blob เป็น base64 จาก Thunkable</h3>
+  <p id="status">รอรับภาพจาก Thunkable...</p>
+  <img id="preview" style="max-width: 100%; height: auto;" />
+
   <script>
     window.addEventListener("message", async function(event) {
       const blobUrl = event.data;
-      const response = await fetch(blobUrl);
-      const blob = await response.blob();
 
-      const reader = new FileReader();
-      reader.onloadend = function() {
-        const base64 = reader.result;
-        // ส่ง base64 กลับไปให้ Thunkable หรืออัปโหลด
-        console.log("Base64 ready", base64);
-        window.ReactNativeWebView.postMessage(base64); // ถ้าต้องส่งกลับไป
-      };
-      reader.readAsDataURL(blob); // แปลง blob เป็น base64
+      document.getElementById("status").innerText = "กำลังโหลดภาพจาก blob...";
+
+      try {
+        const response = await fetch(blobUrl);
+        const blob = await response.blob();
+
+        const reader = new FileReader();
+        reader.onloadend = function () {
+          const base64Data = reader.result;
+
+          // แสดงภาพ preview
+          document.getElementById("preview").src = base64Data;
+          document.getElementById("status").innerText = "ส่งข้อมูลกลับ Thunkable แล้ว";
+
+          // ส่งกลับไปยัง Thunkable
+          window.ReactNativeWebView?.postMessage(base64Data);
+        };
+
+        reader.readAsDataURL(blob); // แปลงเป็น base64
+      } catch (e) {
+        document.getElementById("status").innerText = "เกิดข้อผิดพลาดในการโหลด blob";
+        console.error(e);
+      }
     });
   </script>
 </body>
