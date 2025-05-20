@@ -22,7 +22,7 @@
         model = await tmImage.load(modelURL, metadataURL);
         document.getElementById("status").innerText = "พร้อมรับภาพจาก Thunkable แล้ว...";
       } catch (err) {
-        document.getElementById("status").innerText = "โหลดโมเดลไม่สำเร็จ";
+        document.getElementById("status").innerText = "โหลดโมเดลไม่สำเร็จ...";
         console.error("โหลดโมเดลผิดพลาด:", err);
       }
     }
