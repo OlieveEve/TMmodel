@@ -3,13 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <title>Teachable Machine in Thunkable</title>
+  <!-- โหลด TensorFlow.js ก่อน -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.8.0/dist/tf.min.js"></script>
+  <!-- โหลด Teachable Machine library -->
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
 </head>
 <body>
   <h2 id="status">กำลังโหลดโมเดล...</h2>
   <img id="preview" width="200" />
   <script>
-    const URL = "https://olieveeve.github.io/TMmodel/"; // ← ถูกต้อง
+    const URL = "https://extraordinary-dieffenbachia-7ba6f3.netlify.app/"; // เปลี่ยนเป็น URL ที่ตั้งค่า CORS ถูกต้อง
     let model;
 
     async function loadModel() {
