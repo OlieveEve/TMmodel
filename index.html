@@ -1,17 +1,15 @@
 <!DOCTYPE html>
-<html lang="th">
+<html>
 <head>
   <meta charset="UTF-8" />
-  <title>Teachable Machine บน Thunkable</title>
+  <title>Teachable Machine in Thunkable</title>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
 </head>
 <body>
   <h2 id="status">กำลังโหลดโมเดล...</h2>
-  <img id="preview" width="224" height="224" alt="ตัวอย่างภาพจาก Thunkable" />
-
+  <img id="preview" width="200" />
   <script>
-    // เปลี่ยน URL ด้านล่างให้ตรงกับ GitHub Pages ของคุณ 
-    const URL = "https://olieveeve.github.io/TMmodel/"; 
+    const URL = "https://olieveeve.github.io/TMmodel/"; // เปลี่ยนให้ตรงกับของคุณ
     let model;
 
     async function loadModel() {
@@ -22,8 +20,8 @@
         model = await tmImage.load(modelURL, metadataURL);
         document.getElementById("status").innerText = "พร้อมรับภาพจาก Thunkable แล้ว...";
       } catch (err) {
-        document.getElementById("status").innerText = "โหลดโมเดลไม่สำเร็จ...";
-        console.error("โหลดโมเดลผิดพลาด:", err);
+        console.error("ERROR loading model:", err);
+        document.getElementById("status").innerText = "โหลดโมเดลไม่สำเร็จ";
       }
     }
 
@@ -33,34 +31,32 @@
       const data = event.data;
 
       if (!data.startsWith("data:image")) {
-        document.getElementById("status").innerText = "ข้อมูลที่รับไม่ใช่รูปภาพ";
+        document.getElementById("status").innerText = "ไม่ใช่ข้อมูลภาพ";
         return;
       }
 
       const img = document.getElementById("preview");
       img.src = data;
-      document.getElementById("status").innerText = "รับภาพแล้ว กำลังประมวลผล...";
+      document.getElementById("status").innerText = "กำลังประมวลผล...";
 
       img.onload = async () => {
         try {
           const prediction = await model.predict(img);
           const top = prediction.sort((a, b) => b.probability - a.probability)[0];
-          document.getElementById("status").innerText = "ผลลัพธ์: ${top.className} (${(top.probability * 100).toFixed(2)}%)";
+          document.getElementById("status").innerText = `ผลลัพธ์: ${top.className}`;
 
-          // ส่งผลลัพธ์กลับไปยัง Thunkable
-          if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+          if (window.ReactNativeWebView?.postMessage) {
             window.ReactNativeWebView.postMessage(top.className);
           } else {
             window.parent.postMessage(top.className, "*");
           }
         } catch (err) {
+          console.error("ERROR during prediction:", err);
           document.getElementById("status").innerText = "เกิดข้อผิดพลาดในการประมวลผล";
-          console.error("Predict ผิดพลาด:", err);
         }
       };
     }
 
-    // รับ message จาก Thunkable
     document.addEventListener("message", handleMessage);
     window.addEventListener("message", handleMessage);
   </script>
