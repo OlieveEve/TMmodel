@@ -1,63 +1,68 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>TM in Thunkable</title>
-    <meta charset="UTF-8" />
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
-  </head>
-  <body>
-    <h3 id="status">รอรับภาพจาก Thunkable...</h3>
-    <img id="preview" width="200" />
-    <script>
-      const URL = "https://teachablemachine.withgoogle.com/models/U7Zrx7V59/";
-      let model;
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teachable Machine บน Thunkable</title>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+</head>
+<body>
+  <h2 id="status">กำลังโหลดโมเดล...</h2>
+  <img id="preview" width="224" height="224" alt="ตัวอย่างภาพจาก Thunkable" />
 
-      async function loadModel() {
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
+  <script>
+    // เปลี่ยน URL ด้านล่างให้ตรงกับ GitHub Pages ของคุณ 
+    const URL = "https://olieveeve.github.io/TMmodel/"; 
+    let model;
+
+    async function loadModel() {
+      const modelURL = URL + "model.json";
+      const metadataURL = URL + "metadata.json";
+
+      try {
+        model = await tmImage.load(modelURL, metadataURL);
+        document.getElementById("status").innerText = "พร้อมรับภาพจาก Thunkable แล้ว...";
+      } catch (err) {
+        document.getElementById("status").innerText = "โหลดโมเดลไม่สำเร็จ";
+        console.error("โหลดโมเดลผิดพลาด:", err);
+      }
+    }
+
+    loadModel();
+
+    function handleMessage(event) {
+      const data = event.data;
+
+      if (!data.startsWith("data:image")) {
+        document.getElementById("status").innerText = "ข้อมูลที่รับไม่ใช่รูปภาพ";
+        return;
+      }
+
+      const img = document.getElementById("preview");
+      img.src = data;
+      document.getElementById("status").innerText = "รับภาพแล้ว กำลังประมวลผล...";
+
+      img.onload = async () => {
         try {
-    model = await tmImage.load(modelURL, metadataURL);
-    document.getElementById("status").innerText = "พร้อมรับภาพจาก Thunkable แล้ว...";
-  } catch (err) {
-    document.getElementById("status").innerText = "โหลดโมเดลไม่สำเร็จ";
-    console.error(err);
-  }
-      }
+          const prediction = await model.predict(img);
+          const top = prediction.sort((a, b) => b.probability - a.probability)[0];
+          document.getElementById("status").innerText = "ผลลัพธ์: ${top.className} (${(top.probability * 100).toFixed(2)}%)";
 
-      loadModel();
-
-      function handleMessage(event) {
-        const data = event.data;
-
-        if (!data.startsWith("data:image")) {
-          document.getElementById("status").innerText = "ข้อมูลที่รับไม่ใช่รูปภาพ";
-          return;
-        }
-
-        const img = document.getElementById("preview");
-        img.src = data;
-        document.getElementById("status").innerText = "ประมวลผล...";
-
-        img.onload = async () => {
-          try {
-            const prediction = await model.predict(img);
-            const top = prediction.sort((a, b) => b.probability - a.probability)[0];
-
-            document.getElementById("status").innerText = `ผลลัพธ์: ${top.className}`;
-
-            if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-              window.ReactNativeWebView.postMessage(top.className);
-            } else {
-              window.parent.postMessage(top.className, "*");
-            }
-          } catch (err) {
-            document.getElementById("status").innerText = "เกิดข้อผิดพลาดในการประมวลผล";
+          // ส่งผลลัพธ์กลับไปยัง Thunkable
+          if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+            window.ReactNativeWebView.postMessage(top.className);
+          } else {
+            window.parent.postMessage(top.className, "*");
           }
-        };
-      }
+        } catch (err) {
+          document.getElementById("status").innerText = "เกิดข้อผิดพลาดในการประมวลผล";
+          console.error("Predict ผิดพลาด:", err);
+        }
+      };
+    }
 
-      document.addEventListener("message", handleMessage);
-      window.addEventListener("message", handleMessage);
-    </script>
-  </body>
+    // รับ message จาก Thunkable
+    document.addEventListener("message", handleMessage);
+    window.addEventListener("message", handleMessage);
+  </script>
+</body>
 </html>
