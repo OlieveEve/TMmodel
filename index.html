@@ -48,7 +48,7 @@
     // ประมวลผลเมื่อได้รับข้อความจาก Thunkable
     async function handleMessage(event) {
             console.log("รับข้อมูลจาก Thunkable:", event.data);
-      const imageUrl = event.data;
+      const imageUrl = event.data?.trim();
 
       if (!imageUrl || !imageUrl.startsWith("http")) {
         document.getElementById("status").innerText = "URL ของภาพไม่ถูกต้อง";
