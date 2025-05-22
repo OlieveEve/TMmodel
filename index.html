@@ -3,25 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <title>Teachable Machine in Thunkable</title>
-  <!-- โหลด TensorFlow.js ก่อน -->
+  <!-- TensorFlow.js -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.8.0/dist/tf.min.js"></script>
-  <!-- โหลด Teachable Machine library -->
+  <!-- Teachable Machine Image library -->
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
 </head>
 <body>
   <h2 id="status">กำลังโหลดโมเดล...</h2>
   <img id="preview" width="200" />
+
   <script>
-    const URL = "https://extraordinary-dieffenbachia-7ba6f3.netlify.app/"; // เปลี่ยนเป็น URL ที่ตั้งค่า CORS ถูกต้อง
+    const URL = "https://extraordinary-dieffenbachia-7ba6f3.netlify.app/"; // เปลี่ยนตามโมเดลของคุณ
     let model;
 
+    // โหลดโมเดล
     async function loadModel() {
       const modelURL = URL + "model.json";
       const metadataURL = URL + "metadata.json";
 
       try {
         model = await tmImage.load(modelURL, metadataURL);
-        document.getElementById("status").innerText = "พร้อมรับภาพจาก Thunkable แล้ว...";
+        document.getElementById("status").innerText = "พร้อมรับ URL ของภาพจาก Thunkable แล้ว...";
       } catch (err) {
         console.error("ERROR loading model:", err);
         document.getElementById("status").innerText = "โหลดโมเดลไม่สำเร็จ";
@@ -30,38 +32,64 @@
 
     loadModel();
 
-    function handleMessage(event) {
-      const data = event.data;
+    // แปลง URL ของภาพเป็น base64
+    async function imageUrlToBase64(url) {
+      const response = await fetch(url);
+      const blob = await response.blob();
 
-      if (!data.startsWith("data:image")) {
-        document.getElementById("status").innerText = "ไม่ใช่ข้อมูลภาพ";
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result); // base64 string
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    // ประมวลผลเมื่อได้รับข้อความจาก Thunkable
+    async function handleMessage(event) {
+      const imageUrl = event.data;
+
+      if (!imageUrl || !imageUrl.startsWith("http")) {
+        document.getElementById("status").innerText = "URL ของภาพไม่ถูกต้อง";
         return;
       }
 
-      const img = document.getElementById("preview");
-      img.src = data;
-      document.getElementById("status").innerText = "กำลังประมวลผล...";
+      document.getElementById("status").innerText = "กำลังโหลดและแปลงภาพ...";
 
-      img.onload = async () => {
-        try {
-          const prediction = await model.predict(img);
-          const top = prediction.sort((a, b) => b.probability - a.probability)[0];
-          document.getElementById("status").innerText = `ผลลัพธ์: ${top.className}`;
+      try {
+        const base64Data = await imageUrlToBase64(imageUrl);
 
-          if (window.ReactNativeWebView?.postMessage) {
-            window.ReactNativeWebView.postMessage(top.className);
-          } else {
-            window.parent.postMessage(top.className, "*");
+        const img = document.getElementById("preview");
+        img.src = base64Data;
+        document.getElementById("status").innerText = "กำลังประมวลผล...";
+
+        img.onload = async () => {
+          try {
+            const prediction = await model.predict(img);
+            const top = prediction.sort((a, b) => b.probability - a.probability)[0];
+
+            document.getElementById("status").innerText = `ผลลัพธ์: ${top.className}`;
+
+            // ส่งผลลัพธ์กลับไปยัง Thunkable
+            if (window.ReactNativeWebView?.postMessage) {
+              window.ReactNativeWebView.postMessage(top.className);
+            } else if (window.parent) {
+              window.parent.postMessage(top.className, "*");
+            }
+          } catch (err) {
+            console.error("ERROR during prediction:", err);
+            document.getElementById("status").innerText = "เกิดข้อผิดพลาดในการประมวลผล";
           }
-        } catch (err) {
-          console.error("ERROR during prediction:", err);
-          document.getElementById("status").innerText = "เกิดข้อผิดพลาดในการประมวลผล";
-        }
-      };
+        };
+      } catch (err) {
+        console.error("ERROR loading image:", err);
+        document.getElementById("status").innerText = "ไม่สามารถโหลดภาพได้";
+      }
     }
 
-    document.addEventListener("message", handleMessage);
-    window.addEventListener("message", handleMessage);
+    // รองรับทั้ง Android และ iOS ของ Thunkable
+    document.addEventListener("message", handleMessage); // Android
+    window.addEventListener("message", handleMessage);   // iOS
   </script>
 </body>
 </html>
